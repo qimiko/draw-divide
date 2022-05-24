@@ -3,8 +3,7 @@
 #include <hackpro_ext.h>
 
 int FRAME_COUNTER = 0;
-int DRAW_DIVIDE = 4;
-int ENABLE_HACK = true;
+int ENABLE_HACK = false;
 int SETUP_HACKPRO = false;
 
 // to get around protected modifier
@@ -19,16 +18,25 @@ public:
 	}
 };
 
+double frame_remainder = 0;
+int target_fps = 60;
+
 void(__thiscall *CCDirector_drawScene_O)(cocos2d::CCDirector*);
 void __fastcall CCDirector_drawScene_H(cocos2d::CCDirector* self) {
 	if (!ENABLE_HACK) {
 		return CCDirector_drawScene_O(self);
 	}
 
+	// scary floats
+	// getAnimationInterval is 1/fps bypass
+	// 1/((1/fps bypass) * target) = fps bypass/target
+	const double thing = 1.f / (self->getAnimationInterval() * static_cast<double>(target_fps));
+
 	FRAME_COUNTER++;
 
 	// run full scene draw (glClear, visit) each time the counter is full
-	if (FRAME_COUNTER >= DRAW_DIVIDE) {
+	if (static_cast<double>(FRAME_COUNTER) + frame_remainder >= thing) {
+		frame_remainder += static_cast<double>(FRAME_COUNTER) - thing;
 		FRAME_COUNTER = 0;
 		return CCDirector_drawScene_O(self);
 	}
@@ -56,14 +64,13 @@ void __stdcall on_text_input(void* tb) {
 	auto text = HackproGetTextBoxText(tb);
 
 	try {
-		auto factor = std::stoi(text);
-		DRAW_DIVIDE = factor;
-	} catch (const std::exception& e) {
+		target_fps = std::stoi(text);
+	} catch (const std::exception&) {
 		// generic catch all for things like null strings or bad values
-		DRAW_DIVIDE = 0;
+		target_fps = 0;
 	}
 
-	HackproSetTextBoxText(tb, std::to_string(DRAW_DIVIDE).c_str());
+	// HackproSetTextBoxText(tb, std::to_string(DRAW_DIVIDE).c_str());
 }
 
 void __stdcall on_frame_input(void* tb) {
@@ -86,7 +93,7 @@ void setup_hackpro() {
 
 				auto tb = HackproAddTextBox(ext, on_text_input);
 				HackproSetTextBoxPlaceholder(tb, "Factor");
-				HackproSetTextBoxText(tb, std::to_string(DRAW_DIVIDE).c_str());
+				HackproSetTextBoxText(tb, std::to_string(target_fps).c_str());
 
 				auto cb = HackproAddCheckbox(ext, "Enable", on_checkbox_enable, on_checkbox_disable);
 				HackproSetCheckbox(cb, ENABLE_HACK);
@@ -95,16 +102,16 @@ void setup_hackpro() {
 			}
 		}
 
-    SETUP_HACKPRO = true;
-  }
+		SETUP_HACKPRO = true;
+	}
 }
 
 void do_hooks() {
 	setup_hackpro();
 
-  if (auto status = MH_Initialize(); status != MH_OK) {
-    return;
-  }
+	if (MH_Initialize() != MH_OK) {
+		return;
+	}
 
 	auto cocos_handle = LoadLibraryA("libcocos2d.dll");
 
