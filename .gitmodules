@@ -7,3 +7,6 @@
 [submodule "libraries/Mega-Hack-Extensions"]
 	path = libraries/Mega-Hack-Extensions
 	url = https://github.com/absoIute/Mega-Hack-Extensions
+[submodule "libraries/mat-dash"]
+	path = libraries/mat-dash
+	url = https://github.com/matcool/mat-dash.git
