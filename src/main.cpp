@@ -5,6 +5,7 @@
 #include <matdash/minhook.hpp>
 #include <matdash/boilerplate.hpp>
 #include "nodes.hpp"
+#include <chrono>
 
 // making it easier to port to some other framework later on ;)
 using namespace gd;
@@ -89,9 +90,30 @@ void __stdcall on_checkbox_disable(void* cb) {
 bool has_mega_hack = false;
 void* mh_checkbox;
 void* mh_text_box;
+void *mh_fps_checkbox;
 
 int target_fps_bypass = 60;
 bool fps_bypass_enabled = false;
+bool show_fps = false;
+
+void __stdcall on_fps_checkbox_enable(void* cb) {
+	show_fps = true;
+	save_gv_values();
+}
+
+void __stdcall on_fps_checkbox_disable(void* cb) {
+	show_fps = false;
+	save_gv_values();
+}
+
+enum class Corner {
+	TopLeft = 0,
+	TopRight = 1,
+	BotLeft = 2,
+	BotRight = 3
+};
+
+Corner fps_corner = Corner::TopLeft;
 
 void load_gv_values() {
 	auto* gm = GameManager::sharedState();
@@ -99,6 +121,8 @@ void load_gv_values() {
 	target_fps = gm->getIntGameVariableDefault("draw-divide_fps", 60);
 	fps_bypass_enabled = gm->getGameVariableDefault("draw-divide_fps_bypass_enabled", false);
 	target_fps_bypass = gm->getIntGameVariableDefault("draw-divide_fps_bypass", 60);
+	show_fps = gm->getGameVariableDefault("draw-divide_show_fps", false);
+	fps_corner = static_cast<Corner>(gm->getIntGameVariableDefault("draw-divide_fps_corner", static_cast<int>(fps_corner)));
 }
 
 void save_gv_values() {
@@ -107,6 +131,8 @@ void save_gv_values() {
 	gm->setIntGameVariable("draw-divide_fps", target_fps);
 	gm->setGameVariable("draw-divide_fps_bypass_enabled", fps_bypass_enabled);
 	gm->setIntGameVariable("draw-divide_fps_bypass", target_fps_bypass);
+	gm->setGameVariable("draw-divide_show_fps", show_fps);
+	gm->setIntGameVariable("draw-divide_fps_corner", static_cast<int>(fps_corner));
 }
 
 // incredible
@@ -149,7 +175,7 @@ public:
 		m_pButtonMenu->addChild(fps_toggler);
 
 		auto* div_toggler = CCMenuItemToggler::create(check_off_sprite, check_on_sprite, this, menu_selector(MyMoreVideoOptionsLayer::on_toggle_draw_divider));
-		div_toggler->setPosition({-135, -38});
+		div_toggler->setPosition({-135, -39});
 		div_toggler->toggle(enabled);
 		m_pButtonMenu->addChild(div_toggler);
 
@@ -196,7 +222,83 @@ public:
 			save_gv_values();
 		}));
 
+		{
+			auto* toggler = CCMenuItemToggler::create(check_off_sprite, check_on_sprite, this, menu_selector(MyMoreVideoOptionsLayer::on_show_fps));
+			toggler->setPosition({-135, -88});
+			toggler->toggle(show_fps);
+			m_pButtonMenu->addChild(toggler);
+
+			auto* label = cocos2d::CCLabelBMFont::create("Show FPS", "bigFont.fnt");
+			label->setPosition({171.5f, 72});
+			label->setScale(0.5f);
+			label->setAnchorPoint({0.f, 0.5f});
+			m_pLayer->addChild(label);
+		}
+
+		auto* unselected_spr = CCSprite::createWithSpriteFrameName("GJ_select_001.png");
+		auto* selected_spr = CCSprite::createWithSpriteFrameName("playerSquare_001.png");
+		unselected_spr->setScale(0.5f);
+		selected_spr->setScale(0.5f);
+
+
+		const float start_x = 32;
+		const float start_y = -75;
+		{
+			auto* toggler = CCMenuItemToggler::create(unselected_spr, selected_spr, this, menu_selector(MyMoreVideoOptionsLayer::on_select_corner));
+			toggler->setPosition({start_x, start_y});
+			toggler->setTag(44400);
+			m_pButtonMenu->addChild(toggler);
+		}
+		{
+			auto* toggler = CCMenuItemToggler::create(unselected_spr, selected_spr, this, menu_selector(MyMoreVideoOptionsLayer::on_select_corner));
+			toggler->setPosition({start_x + 50, start_y});
+			toggler->toggle(true);
+			toggler->setTag(44401);
+			m_pButtonMenu->addChild(toggler);
+		}
+		{
+			auto* toggler = CCMenuItemToggler::create(unselected_spr, selected_spr, this, menu_selector(MyMoreVideoOptionsLayer::on_select_corner));
+			toggler->setPosition({start_x, start_y - 35});
+			toggler->setTag(44402);
+			m_pButtonMenu->addChild(toggler);
+		}
+		{
+			auto* toggler = CCMenuItemToggler::create(unselected_spr, selected_spr, this, menu_selector(MyMoreVideoOptionsLayer::on_select_corner));
+			toggler->setPosition({start_x + 50, start_y - 35});
+			toggler->setTag(44403);
+			m_pButtonMenu->addChild(toggler);
+		}
+		select_corner(fps_corner);
+
 		return true;
+	}
+
+	void select_corner(const Corner corner) {
+		// the wonders of having to use tags
+		for (int i = 0; i <= 3; ++i) {
+			auto* toggler = static_cast<CCMenuItemToggler*>(m_pButtonMenu->getChildByTag(44400 + i));
+			if (toggler) {
+				toggler->toggle(false);
+			} else {
+				return;
+			}
+		}
+		static_cast<CCMenuItemToggler*>(m_pButtonMenu->getChildByTag(44400 + static_cast<int>(corner)))->toggle(true);
+	}
+
+	void on_select_corner(CCObject* obj) {
+		for (int i = 0; i <= 3; ++i) {
+			auto* toggler = static_cast<CCMenuItemToggler*>(m_pButtonMenu->getChildByTag(44400 + i));
+			if (toggler) {
+				toggler->toggle(false);
+			}
+		}
+		fps_corner = static_cast<Corner>(obj->getTag() - 44400);
+	}
+
+	void on_show_fps(CCObject* obj) {
+		auto* toggler = static_cast<CCMenuItemToggler*>(obj);
+		show_fps = !toggler->isOn();
 	}
 
 	void update_fps_bypass() {
@@ -229,6 +331,80 @@ public:
 	}
 };
 
+cocos2d::CCLabelBMFont* fps_label = nullptr;
+
+bool PlayLayer_init(PlayLayer* self, GJGameLevel* lvl) {
+	if (!matdash::orig<&PlayLayer_init>(self, lvl)) return false;
+
+	if (show_fps) {
+		const auto win_size = cocos2d::CCDirector::sharedDirector()->getWinSize();
+
+		auto label = cocos2d::CCLabelBMFont::create("some fps", "bigFont.fnt");
+		label->setOpacity(100);
+		label->setScale(0.4f);
+		label->setPosition({100, 100});
+		const float pad = 5.f;
+		switch (fps_corner) {
+			case Corner::TopLeft:
+				label->setAnchorPoint({0.f, 1.f});
+				label->setPosition({pad, win_size.height - pad + 5.f});
+				break;
+			case Corner::TopRight:
+				label->setAnchorPoint({1.f, 1.f});
+				label->setPosition({win_size.width - pad, win_size.height - pad + 5.f});
+				break;
+			case Corner::BotLeft:
+				label->setAnchorPoint({0.f, 0.f});
+				label->setPosition({pad, pad});
+				break;
+			case Corner::BotRight:
+				label->setAnchorPoint({1.f, 0.f});
+				label->setPosition({win_size.width - pad, pad});
+				break;
+		}
+
+		label->setZOrder(99);
+		self->addChild(label);
+
+		fps_label = label;
+		self->addChild(OnLeaveNode::create([] {
+			fps_label = nullptr;
+		}));
+	}
+	
+
+	return true;
+}
+
+std::chrono::time_point<std::chrono::high_resolution_clock> previous_frame, last_update;
+float avg = 0.f;
+int frame_count = 0;
+
+matdash::cc::thiscall<void> PlayLayer_update(PlayLayer* self, float dt) {
+	matdash::orig<&PlayLayer_update>(self, dt);
+
+	const auto now = std::chrono::high_resolution_clock::now();
+
+	const std::chrono::duration<float> diff = now - previous_frame;
+	avg += diff.count();
+	frame_count++;
+
+	if (fps_label && std::chrono::duration<float>(now - last_update).count() > 1.0f) {
+		last_update = now;
+		const auto fps = static_cast<int>(std::roundf(static_cast<float>(frame_count) / avg));
+		avg = 0.f;
+		frame_count = 0;
+
+		std::stringstream stream;
+		stream << fps << " rFPS";
+		fps_label->setString(stream.str().c_str());
+	}
+
+	previous_frame = now;
+
+	return {};
+}
+
 void mod_main(HMODULE) {
 	auto cocos_handle = LoadLibraryA("libcocos2d.dll");
 
@@ -236,10 +412,16 @@ void mod_main(HMODULE) {
 
 	matdash::add_hook<&MyMoreVideoOptionsLayer::init_>(gd::base + 0x1E2590);
 
+	matdash::add_hook<&PlayLayer_init>(base + 0x1FB780);
+	matdash::add_hook<&PlayLayer_update>(base + 0x2029C0);
+
 	load_gv_values();
 
 	if (InitialiseHackpro() && HackproIsReady()) {
 		auto ext = HackproInitialiseExt("Draw Divide");
+
+		mh_fps_checkbox = HackproAddCheckbox(ext, "Show FPS", on_fps_checkbox_enable, on_fps_checkbox_disable);
+		HackproSetCheckbox(mh_fps_checkbox, show_fps);
 
 		auto tb = HackproAddTextBox(ext, on_text_input);
 		HackproSetTextBoxPlaceholder(tb, "FPS");
