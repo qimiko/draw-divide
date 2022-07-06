@@ -347,11 +347,11 @@ bool PlayLayer_init(PlayLayer* self, GJGameLevel* lvl) {
 		switch (fps_corner) {
 			case Corner::TopLeft:
 				label->setAnchorPoint({0.f, 1.f});
-				label->setPosition({pad, win_size.height - pad + 5.f});
+				label->setPosition({pad, win_size.height - pad + 4.f});
 				break;
 			case Corner::TopRight:
 				label->setAnchorPoint({1.f, 1.f});
-				label->setPosition({win_size.width - pad, win_size.height - pad + 5.f});
+				label->setPosition({win_size.width - pad, win_size.height - pad + 4.f});
 				break;
 			case Corner::BotLeft:
 				label->setAnchorPoint({0.f, 0.f});
