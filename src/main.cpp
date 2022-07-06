@@ -27,6 +27,27 @@ int target_fps = 60;
 int frame_counter = 0;
 bool enabled = false;
 
+float get_active_fps_limit() {
+	auto* app = cocos2d::CCApplication::sharedApplication();
+	if (app->getVerticalSyncEnabled()) {
+		static const float refresh_rate = [] {
+			DEVMODEA device_mode;
+			memset(&device_mode, 0, sizeof(device_mode));
+			device_mode.dmSize = sizeof(device_mode);
+			device_mode.dmDriverExtra = 0;
+
+			if (EnumDisplaySettingsA(NULL, ENUM_CURRENT_SETTINGS, &device_mode) == 0) {
+				return 60.f;
+			} else {
+				return static_cast<float>(device_mode.dmDisplayFrequency);
+			}
+		}();
+		return refresh_rate;
+	} else {
+		return static_cast<float>(1.0 / cocos2d::CCDirector::sharedDirector()->getAnimationInterval());
+	}
+}
+
 void CCDirector_drawScene(cocos2d::CCDirector* self) {
 	if (!enabled) {
 		return matdash::orig<&CCDirector_drawScene>(self);
@@ -35,7 +56,7 @@ void CCDirector_drawScene(cocos2d::CCDirector* self) {
 	// scary floats
 	// getAnimationInterval is 1/fps bypass
 	// 1/((1/fps bypass) * target) = fps bypass/target
-	const double thing = 1.f / (self->getAnimationInterval() * static_cast<double>(target_fps));
+	const float thing = get_active_fps_limit() / static_cast<float>(target_fps);
 
 	frame_counter++;
 
