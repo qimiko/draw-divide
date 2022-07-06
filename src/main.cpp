@@ -323,8 +323,7 @@ public:
 	}
 
 	void update_fps_bypass() {
-		auto* app = cocos2d::CCApplication::sharedApplication();
-		app->setAnimationInterval(1.0 / static_cast<double>(target_fps_bypass));
+		cocos2d::CCDirector::sharedDirector()->setAnimationInterval(1.0 / static_cast<double>(target_fps_bypass));
 	}
 
 	void on_toggle_fps_bypass(CCObject* obj) {
@@ -338,7 +337,7 @@ public:
 			}
 			update_fps_bypass();
 		} else {
-			app->setAnimationInterval(1.0 / 60.0);
+			cocos2d::CCDirector::sharedDirector()->setAnimationInterval(1.0 / 60.0);
 		}
 		fps_bypass_enabled = !toggler->isOn();
 	}
