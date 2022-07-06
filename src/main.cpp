@@ -62,6 +62,8 @@ void CCDirector_drawScene(cocos2d::CCDirector* self) {
 	}
 }
 
+void save_gv_values();
+
 void __stdcall on_text_input(void* tb) {
 	auto text = HackproGetTextBoxText(tb);
 
@@ -71,23 +73,61 @@ void __stdcall on_text_input(void* tb) {
 		// generic catch all for things like null strings or bad values
 		target_fps = 0;
 	}
+	save_gv_values();
 }
 
 void __stdcall on_checkbox_enable(void* cb) {
 	enabled = true;
+	save_gv_values();
 }
 
 void __stdcall on_checkbox_disable(void* cb) {
 	enabled = false;
+	save_gv_values();
 }
 
 bool has_mega_hack = false;
 void* mh_checkbox;
 void* mh_text_box;
 
-
 int target_fps_bypass = 60;
 bool fps_bypass_enabled = false;
+
+void load_gv_values() {
+	auto* gm = GameManager::sharedState();
+	enabled = gm->getGameVariableDefault("draw-divide_enabled", false);
+	target_fps = gm->getIntGameVariableDefault("draw-divide_fps", 60);
+	fps_bypass_enabled = gm->getGameVariableDefault("draw-divide_fps_bypass_enabled", false);
+	target_fps_bypass = gm->getIntGameVariableDefault("draw-divide_fps_bypass", 60);
+}
+
+void save_gv_values() {
+	auto* gm = GameManager::sharedState();
+	gm->setGameVariable("draw-divide_enabled", enabled);
+	gm->setIntGameVariable("draw-divide_fps", target_fps);
+	gm->setGameVariable("draw-divide_fps_bypass_enabled", fps_bypass_enabled);
+	gm->setIntGameVariable("draw-divide_fps_bypass", target_fps_bypass);
+}
+
+// incredible
+class OnLeaveNode : public cocos2d::CCNode {
+	std::function<void()> m_func = []{};
+public:
+	~OnLeaveNode() {
+		m_func();
+	}
+
+	static auto* create(const std::function<void()>& func) {
+		auto* node = new (std::nothrow) OnLeaveNode();
+		if (node && node->init()) {
+			node->m_func = func;
+			node->autorelease();
+		} else {
+			CC_SAFE_DELETE(node);
+		}
+		return node;
+	}
+};
 
 class MyMoreVideoOptionsLayer : public FLAlertLayer {
 public:
@@ -103,28 +143,28 @@ public:
 		// freaking macro
 		using namespace cocos2d;
 
-		auto* toggler1 = CCMenuItemToggler::create(check_off_sprite, check_on_sprite, this, menu_selector(MyMoreVideoOptionsLayer::on_toggle_fps_bypass));
-		toggler1->setPosition({-135, 10});
-		toggler1->toggle(enabled);
-		m_pButtonMenu->addChild(toggler1);
+		auto* fps_toggler = CCMenuItemToggler::create(check_off_sprite, check_on_sprite, this, menu_selector(MyMoreVideoOptionsLayer::on_toggle_fps_bypass));
+		fps_toggler->setPosition({-135, 10});
+		fps_toggler->toggle(fps_bypass_enabled);
+		m_pButtonMenu->addChild(fps_toggler);
 
-		auto* toggler2 = CCMenuItemToggler::create(check_off_sprite, check_on_sprite, this, menu_selector(MyMoreVideoOptionsLayer::on_toggle_draw_divider));
-		toggler2->setPosition({-135, -38});
-		toggler2->toggle(fps_bypass_enabled);
-		m_pButtonMenu->addChild(toggler2);
+		auto* div_toggler = CCMenuItemToggler::create(check_off_sprite, check_on_sprite, this, menu_selector(MyMoreVideoOptionsLayer::on_toggle_draw_divider));
+		div_toggler->setPosition({-135, -38});
+		div_toggler->toggle(enabled);
+		m_pButtonMenu->addChild(div_toggler);
 
 
-		auto* label1 = cocos2d::CCLabelBMFont::create("FPS Bypass", "bigFont.fnt");
-		label1->setPosition({171.5f, 170});
-		label1->setScale(0.5f);
-		label1->setAnchorPoint({0.f, 0.5f});
-		m_pLayer->addChild(label1);
+		auto* fps_label = cocos2d::CCLabelBMFont::create("FPS Bypass", "bigFont.fnt");
+		fps_label->setPosition({171.5f, 170});
+		fps_label->setScale(0.5f);
+		fps_label->setAnchorPoint({0.f, 0.5f});
+		m_pLayer->addChild(fps_label);
 
-		auto* label2 = cocos2d::CCLabelBMFont::create("Draw Rate", "bigFont.fnt");
-		label2->setPosition({171.5f, 121});
-		label2->setScale(0.5f);
-		label2->setAnchorPoint({0.f, 0.5f});
-		m_pLayer->addChild(label2);
+		auto* div_label = cocos2d::CCLabelBMFont::create("Draw Rate", "bigFont.fnt");
+		div_label->setPosition({171.5f, 121});
+		div_label->setScale(0.5f);
+		div_label->setAnchorPoint({0.f, 0.5f});
+		m_pLayer->addChild(div_label);
 
 		auto* fps_input = NumberInputNode::create(CCSize(48, 28), 1.5f, "bigFont.fnt");
 		fps_input->set_value(target_fps_bypass);
@@ -151,6 +191,10 @@ public:
 			}
 		};
 		m_pLayer->addChild(div_input);
+
+		addChild(OnLeaveNode::create([] {
+			save_gv_values();
+		}));
 
 		return true;
 	}
@@ -191,6 +235,8 @@ void mod_main(HMODULE) {
 	matdash::add_hook<&CCDirector_drawScene>(GetProcAddress(cocos_handle, "?drawScene@CCDirector@cocos2d@@QAEXXZ"));
 
 	matdash::add_hook<&MyMoreVideoOptionsLayer::init_>(gd::base + 0x1E2590);
+
+	load_gv_values();
 
 	if (InitialiseHackpro() && HackproIsReady()) {
 		auto ext = HackproInitialiseExt("Draw Divide");
