@@ -7,7 +7,7 @@ project(draw-divide VERSION 1.0.0)
 
 add_library(draw-divide SHARED src/main.cpp src/nodes.cpp)
 
-target_compile_definitions(draw-divide PRIVATE CC_DLL=)
+target_compile_definitions(draw-divide PRIVATE CC_DLL= NOMINMAX)
 
 target_include_directories(draw-divide PRIVATE
   libraries/minhook/include

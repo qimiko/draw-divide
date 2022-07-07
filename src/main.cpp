@@ -91,10 +91,10 @@ void __stdcall on_text_input(void* tb) {
 	auto text = HackproGetTextBoxText(tb);
 
 	try {
-		target_fps = std::stoi(text);
+		target_fps = std::max(std::stoi(text), 1);
 	} catch (const std::exception&) {
 		// generic catch all for things like null strings or bad values
-		target_fps = 0;
+		target_fps = 1;
 	}
 	save_gv_values();
 }
@@ -140,7 +140,8 @@ Corner fps_corner = Corner::TopLeft;
 void load_gv_values() {
 	auto* gm = GameManager::sharedState();
 	enabled = gm->getGameVariableDefault("draw-divide_enabled", false);
-	target_fps = gm->getIntGameVariableDefault("draw-divide_fps", 60);
+	// for safety
+	target_fps = std::max(gm->getIntGameVariableDefault("draw-divide_fps", 60), 1);
 	fps_bypass_enabled = gm->getGameVariableDefault("draw-divide_fps_bypass_enabled", false);
 	target_fps_bypass = gm->getIntGameVariableDefault("draw-divide_fps_bypass", 60);
 	show_fps = gm->getGameVariableDefault("draw-divide_show_fps", false);
@@ -219,8 +220,7 @@ public:
 		fps_input->input_node->setMaxLabelScale(0.7f);
 		fps_input->setPosition({331, 170});
 		fps_input->callback = [this](NumberInputNode& node) {
-			target_fps_bypass = node.get_value();
-			if (target_fps_bypass <= 0) target_fps_bypass = 1;
+			target_fps_bypass = std::max(node.get_value(), 1);
 			if (fps_bypass_enabled) {
 				update_fps_bypass();
 			}
@@ -232,8 +232,7 @@ public:
 		div_input->input_node->setMaxLabelScale(0.7f);
 		div_input->setPosition({331, 121});
 		div_input->callback = [](NumberInputNode& node) {
-			target_fps = node.get_value();
-			if (target_fps <= 0) target_fps = 1;
+			target_fps = std::max(node.get_value(), 1);
 			if (has_mega_hack) {
 				HackproSetTextBoxText(mh_text_box, std::to_string(target_fps).c_str());
 			}
