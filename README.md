@@ -4,13 +4,14 @@ An inverse physics bypass. If rendering is a slowdown for GD, this may allow you
 
 ## Usage
 
-As of right now, this mod can only be configured with Mega Hack v6+.  
-By default, the hack is enabled and will draw the game at 1/4th your chosen FPS.
+Open the advanced options in the graphics menu to configure the mod :-) \
+The show fps option will show the actual fps the game is running at, which differs from mega hack's since it uses a visual fps counter \
+(ps: you dont have to use the fps bypass in the menu, mega hack's works fine)
 
-The FPS of your game (chosen through bypass, with VSync, or as 60 FPS) is the rate at which update functions are called (such as physics and input). The factor (4 by default, can be configured in Mega Hack) determines the rate at which frames are rendered at.  
-For example, at 240 FPS bypass with a factor of 4, the game will appear to be drawing at 60 FPS. However, physics will be running as if you are playing at 240 FPS. This can be verified using a physics-based FPS detector (such as the one at in-game ID 66886242) and a drawing-based FPS detector (such as the one built into MegaHack).
+The FPS of your game (chosen through bypass, with VSync, or as 60 FPS) is the rate at which update functions are called (such as physics and input).
+
+For example, at 240 FPS bypass with a rate of 60, the game will appear to be drawing at 60 FPS. However, physics will be running as if you are playing at 240 FPS. This can be verified using a physics-based FPS detector (such as the one at in-game ID 66886242) and a drawing-based FPS detector (such as the one built into MegaHack).
 
 ## Credits
 
 * blanket addict
-
